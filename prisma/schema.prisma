@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Rol {
+  CLIENTE
+  AGENTE
+  ADMIN
+}
+
+enum EstadoTicket {
+  ABIERTO
+  EN_PROGRESO
+  CERRADO
+}
+
+enum TipoTicket {
+  SOPORTE
+  REQUERIMIENTO
+}
+
+enum Prioridad {
+  BAJA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+model Usuario {
+  id           String   @id @default(cuid())
+  nombre       String
+  email        String   @unique
+  passwordHash String
+  rol          Rol      @default(CLIENTE)
+  activo       Boolean  @default(true)
+  creadoEn     DateTime @default(now())
+
+  ticketsCreados  Ticket[]     @relation("TicketCliente")
+  ticketsAsignados Ticket[]    @relation("TicketAgente")
+  comentarios     Comentario[]
+}
+
+model Ticket {
+  id          String       @id @default(cuid())
+  /// Folio legible, único y correlativo por año. Ej: TCK-2026-000042
+  folio       String       @unique
+  titulo      String
+  descripcion String
+  tipo        TipoTicket   @default(SOPORTE)
+  prioridad   Prioridad    @default(MEDIA)
+  estado      EstadoTicket @default(ABIERTO)
+
+  clienteId String
+  cliente   Usuario  @relation("TicketCliente", fields: [clienteId], references: [id])
+  agenteId  String?
+  agente    Usuario? @relation("TicketAgente", fields: [agenteId], references: [id])
+
+  creadoEn      DateTime  @default(now())
+  actualizadoEn DateTime  @updatedAt
+  cerradoEn     DateTime?
+
+  /// true si el ticket se creó en horario hábil (L-V 09:00-18:00, America/Santiago)
+  horarioHabil          Boolean
+  /// SLA de primer contacto: 30 min hábil / 1 h inhábil
+  primerContactoVenceEn DateTime
+  primerContactoEn      DateTime?
+  /// SLA de inicio de atención: 1 h hábil / 2 h inhábil
+  inicioAtencionVenceEn DateTime
+  inicioAtencionEn      DateTime?
+
+  comentarios Comentario[]
+
+  @@index([estado])
+  @@index([clienteId])
+  @@index([agenteId])
+  @@index([primerContactoVenceEn])
+  @@index([inicioAtencionVenceEn])
+}
+
+model Comentario {
+  id       String   @id @default(cuid())
+  texto    String
+  creadoEn DateTime @default(now())
+
+  ticketId String
+  ticket   Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  autorId  String
+  autor    Usuario @relation(fields: [autorId], references: [id])
+
+  @@index([ticketId])
+}
+
+/// Contador correlativo de folios por año
+model ContadorFolio {
+  anio   Int @id
+  ultimo Int @default(0)
+}
