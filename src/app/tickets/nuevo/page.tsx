@@ -1,7 +1,6 @@
 import { crearTicket } from "../../acciones";
 import { FormularioConEstado } from "@/components/FormularioConEstado";
 import { requerirUsuario } from "@/lib/sesion";
-import { HORAS_SLA } from "@/lib/sla";
 import { ETIQUETA_PRIORIDAD } from "@/lib/etiquetas";
 
 export default async function NuevoTicket() {
@@ -23,14 +22,16 @@ export default async function NuevoTicket() {
             Prioridad
             <select name="prioridad" defaultValue="MEDIA">
               {(["BAJA", "MEDIA", "ALTA", "CRITICA"] as const).map((p) => (
-                <option key={p} value={p}>
-                  {ETIQUETA_PRIORIDAD[p]} (SLA {HORAS_SLA[p]} h)
-                </option>
+                <option key={p} value={p}>{ETIQUETA_PRIORIDAD[p]}</option>
               ))}
             </select>
           </label>
         </div>
         <label>Descripción<textarea name="descripcion" required minLength={10} /></label>
+        <p className="muted pequeno">
+          Tiempos de respuesta: primer contacto en 30 min e inicio de atención en 1 h (lunes a viernes de 09:00 a
+          18:00). Fuera de ese horario: 1 h y 2 h.
+        </p>
       </FormularioConEstado>
     </div>
   );

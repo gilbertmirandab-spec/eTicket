@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requerirUsuario } from "@/lib/sesion";
 import { esStaff } from "@/lib/permisos";
-import { semaforoSla, tiempoRestanteTexto, type Semaforo } from "@/lib/sla";
+import { ETIQUETA_SLA, proximoVencimiento, semaforoSla, tiempoRestanteTexto, type Semaforo } from "@/lib/sla";
 import { ETIQUETA_ESTADO, ETIQUETA_PRIORIDAD, ETIQUETA_TIPO, formatearFecha } from "@/lib/etiquetas";
 import { ChipSemaforo } from "@/components/Semaforo";
 
@@ -40,11 +40,11 @@ export default async function ListaTickets({
     await prisma.ticket.findMany({
       where,
       include: { cliente: true, agente: true },
-      orderBy: [{ slaVenceEn: "asc" }],
+      orderBy: [{ creadoEn: "desc" }],
       take: 500,
     })
   )
-    .map((t) => ({ ...t, semaforo: semaforoSla(t, ahora) }))
+    .map((t) => ({ ...t, semaforo: semaforoSla(t, ahora).general, proximo: proximoVencimiento(t) }))
     .filter((t) => !sla || t.semaforo === sla);
 
   return (
@@ -90,7 +90,7 @@ export default async function ListaTickets({
                   <td>
                     <ChipSemaforo
                       valor={t.semaforo}
-                      detalle={t.estado === "CERRADO" ? undefined : tiempoRestanteTexto(t.slaVenceEn, ahora)}
+                      detalle={t.proximo ? `${ETIQUETA_SLA[t.proximo.tipo]}: ${tiempoRestanteTexto(t.proximo.venceEn, ahora)}` : undefined}
                     />
                   </td>
                   {esStaff(usuario) && <td>{t.cliente.nombre}</td>}

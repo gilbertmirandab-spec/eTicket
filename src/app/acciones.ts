@@ -9,10 +9,11 @@ import { signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { requerirAdmin, requerirUsuario } from "@/lib/sesion";
 import { siguienteFolio } from "@/lib/folio";
-import { calcularVencimientoSla } from "@/lib/sla";
+import { calcularVencimientos } from "@/lib/sla";
 import {
   puedeAsignar,
   puedeCambiarEstado,
+  esStaff,
   puedeComentar,
   puedeEliminar,
 } from "@/lib/permisos";
@@ -88,7 +89,7 @@ export async function crearTicket(_: EstadoFormulario, form: FormData): Promise<
         folio,
         clienteId: usuario.id,
         creadoEn: ahora,
-        slaVenceEn: calcularVencimientoSla(parsed.data.prioridad, ahora),
+        ...calcularVencimientos(ahora),
       },
     });
   });
@@ -103,13 +104,18 @@ export async function cambiarEstado(ticketId: string, form: FormData) {
   if (!puedeCambiarEstado(usuario)) throw new Error("No autorizado");
   const estado = esquemaEstado.parse(form.get("estado"));
   const ticket = await prisma.ticket.findUniqueOrThrow({ where: { id: ticketId } });
+  const ahora = new Date();
+  const atendido = estado !== "ABIERTO";
   await prisma.ticket.update({
     where: { id: ticketId },
     data: {
       estado,
-      cerradoEn: estado === "CERRADO" ? (ticket.cerradoEn ?? new Date()) : null,
+      cerradoEn: estado === "CERRADO" ? (ticket.cerradoEn ?? ahora) : null,
+      // Pasar a "En progreso" (o cerrar) marca el inicio de atención y, si no lo hubo, el primer contacto
+      inicioAtencionEn: atendido && !ticket.inicioAtencionEn ? ahora : undefined,
+      primerContactoEn: atendido && !ticket.primerContactoEn ? ahora : undefined,
       // Al tomar un ticket sin asignar, queda asignado a quien lo toma
-      agenteId: estado === "EN_PROGRESO" && !ticket.agenteId ? usuario.id : undefined,
+      agenteId: atendido && !ticket.agenteId ? usuario.id : undefined,
     },
   });
   revalidatePath(`/tickets/${ticketId}`);
@@ -136,6 +142,10 @@ export async function comentar(ticketId: string, form: FormData) {
   const ticket = await prisma.ticket.findUniqueOrThrow({ where: { id: ticketId } });
   if (!puedeComentar(usuario, ticket)) throw new Error("No autorizado");
   await prisma.comentario.create({ data: { ticketId, autorId: usuario.id, texto } });
+  // La primera respuesta de un agente o administrador cumple el SLA de primer contacto
+  if (esStaff(usuario) && !ticket.primerContactoEn) {
+    await prisma.ticket.update({ where: { id: ticketId }, data: { primerContactoEn: new Date() } });
+  }
   revalidatePath(`/tickets/${ticketId}`);
 }
 

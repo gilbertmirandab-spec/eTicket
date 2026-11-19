@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requerirAdmin } from "@/lib/sesion";
 import { leerPeriodo, obtenerResumen } from "@/lib/reportes";
-import { tiempoRestanteTexto, type Semaforo } from "@/lib/sla";
+import { ETIQUETA_SLA, minutosAmarillo, tiempoRestanteTexto, type Semaforo } from "@/lib/sla";
 import { ETIQUETA_ESTADO, ETIQUETA_PRIORIDAD } from "@/lib/etiquetas";
 import { ChipSemaforo } from "@/components/Semaforo";
 
@@ -44,10 +44,12 @@ export default async function Dashboard({
             <div className="etiqueta">{ETIQUETA_ESTADO[e]}</div>
           </div>
         ))}
-        <div className="tarjeta kpi">
-          <div className="valor">{r.cumplimientoSla === null ? "—" : `${r.cumplimientoSla}%`}</div>
-          <div className="etiqueta">Cerrados dentro del SLA</div>
-        </div>
+        {(["primerContacto", "inicioAtencion"] as const).map((tipo) => (
+          <div key={tipo} className="tarjeta kpi">
+            <div className="valor">{r.cumplimiento[tipo] === null ? "—" : `${r.cumplimiento[tipo]}%`}</div>
+            <div className="etiqueta">Cumplimiento {ETIQUETA_SLA[tipo].toLowerCase()}</div>
+          </div>
+        ))}
       </section>
 
       <section className="grilla" style={{ marginBottom: 16 }}>
@@ -68,6 +70,22 @@ export default async function Dashboard({
           </ul>
         </div>
         <div className="tarjeta">
+          <h2>Por indicador de SLA</h2>
+          <table>
+            <thead><tr><th>Indicador</th><th>Rojo</th><th>Amarillo</th><th>Verde</th></tr></thead>
+            <tbody>
+              {(["primerContacto", "inicioAtencion"] as const).map((tipo) => (
+                <tr key={tipo}>
+                  <td>{ETIQUETA_SLA[tipo]}</td>
+                  <td>{r.porSla[tipo].ROJO}</td>
+                  <td>{r.porSla[tipo].AMARILLO}</td>
+                  <td>{r.porSla[tipo].VERDE}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="tarjeta">
           <h2>Por prioridad</h2>
           <table>
             <tbody>
@@ -85,16 +103,16 @@ export default async function Dashboard({
           <p className="muted">Ningún ticket activo está vencido ni pronto a vencer.</p>
         ) : (
           <table>
-            <thead><tr><th>Folio</th><th>Título</th><th>Prioridad</th><th>Estado</th><th>SLA</th><th>Plazo</th><th>Agente</th></tr></thead>
+            <thead><tr><th>Folio</th><th>Título</th><th>Estado</th><th>SLA</th><th>Indicador</th><th>Plazo</th><th>Agente</th></tr></thead>
             <tbody>
               {r.enRiesgo.map((t) => (
                 <tr key={t.id}>
                   <td><Link className="folio" href={`/tickets/${t.id}`}>{t.folio}</Link></td>
                   <td>{t.titulo}</td>
-                  <td>{ETIQUETA_PRIORIDAD[t.prioridad]}</td>
                   <td>{ETIQUETA_ESTADO[t.estado]}</td>
-                  <td><ChipSemaforo valor={t.semaforo} /></td>
-                  <td className="pequeno">{tiempoRestanteTexto(t.slaVenceEn, ahora)}</td>
+                  <td><ChipSemaforo valor={t.sla[t.proximo!.tipo]} /></td>
+                  <td>{ETIQUETA_SLA[t.proximo!.tipo]}</td>
+                  <td className="pequeno">{tiempoRestanteTexto(t.proximo!.venceEn, ahora)}</td>
                   <td>{t.agente?.nombre ?? <span className="muted">Sin asignar</span>}</td>
                 </tr>
               ))}
@@ -103,8 +121,9 @@ export default async function Dashboard({
         )}
       </div>
       <p className="muted pequeno">
-        Semáforo: rojo = SLA vencido, amarillo = queda menos del {process.env.SLA_UMBRAL_AMARILLO_PCT ?? 25}% del
-        plazo, verde = a tiempo.
+        SLA (igual para toda prioridad): primer contacto 30 min e inicio de atención 1 h si el ticket se crea en
+        horario hábil (L-V 09:00-18:00); 1 h y 2 h si se crea fuera de horario. El tiempo corre continuo. Semáforo:
+        rojo = vencido, amarillo = faltan {minutosAmarillo()} min o menos, verde = a tiempo.
       </p>
     </>
   );

@@ -1,7 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
 import type { obtenerResumen, FiltroPeriodo } from "@/lib/reportes";
-import { ETIQUETA_SEMAFORO, type Semaforo } from "@/lib/sla";
-import { ETIQUETA_ESTADO, ETIQUETA_PRIORIDAD, formatearFecha } from "@/lib/etiquetas";
+import { ETIQUETA_SEMAFORO, ETIQUETA_SLA, type Semaforo } from "@/lib/sla";
+import { ETIQUETA_ESTADO, formatearFecha } from "@/lib/etiquetas";
 
 type Resumen = Awaited<ReturnType<typeof obtenerResumen>>;
 
@@ -74,7 +74,10 @@ export async function generarInformePdf(r: Resumen, periodo: FiltroPeriodo, ahor
     [ETIQUETA_ESTADO.ABIERTO, String(r.porEstado.ABIERTO)],
     [ETIQUETA_ESTADO.EN_PROGRESO, String(r.porEstado.EN_PROGRESO)],
     [ETIQUETA_ESTADO.CERRADO, String(r.porEstado.CERRADO)],
-    ["Cerrados dentro del SLA", r.cumplimientoSla === null ? "-" : `${r.cumplimientoSla}%`],
+    ...(["primerContacto", "inicioAtencion"] as const).map((tipo): [string, string] => [
+      `Cumplimiento ${ETIQUETA_SLA[tipo].toLowerCase()}`,
+      r.cumplimiento[tipo] === null ? "-" : `${r.cumplimiento[tipo]}%`,
+    ]),
   ];
   for (const [k, v] of filasResumen) {
     texto(k, M, 10);
@@ -95,12 +98,12 @@ export async function generarInformePdf(r: Resumen, periodo: FiltroPeriodo, ahor
 
   // Detalle
   const cols = [
-    { t: "Folio", w: 90 },
-    { t: "Título", w: 148 },
-    { t: "Prioridad", w: 50 },
-    { t: "Estado", w: 60 },
-    { t: "SLA", w: 82 },
-    { t: "Creado", w: 85 },
+    { t: "Folio", w: 88 },
+    { t: "Título", w: 130 },
+    { t: "Estado", w: 58 },
+    { t: "1er contacto", w: 75 },
+    { t: "Inicio atención", w: 80 },
+    { t: "Creado", w: 84 },
   ];
   const encabezadoTabla = () => {
     let x = M;
@@ -125,16 +128,17 @@ export async function generarInformePdf(r: Resumen, periodo: FiltroPeriodo, ahor
     const valores = [
       t.folio,
       t.titulo,
-      ETIQUETA_PRIORIDAD[t.prioridad],
       ETIQUETA_ESTADO[t.estado],
-      ETIQUETA_SEMAFORO[t.semaforo],
+      ETIQUETA_SEMAFORO[t.sla.primerContacto],
+      ETIQUETA_SEMAFORO[t.sla.inicioAtencion],
       formatearFecha(t.creadoEn),
     ];
+    const colorCol: Record<number, Semaforo> = { 3: t.sla.primerContacto, 4: t.sla.inicioAtencion };
     let x = M;
     valores.forEach((v, i) => {
       const font = i === 0 ? negrita : normal;
-      if (i === 4) {
-        page.drawCircle({ x: x + 3, y: y + 3, size: 3, color: COLOR_SEMAFORO[t.semaforo] });
+      if (colorCol[i]) {
+        page.drawCircle({ x: x + 3, y: y + 3, size: 3, color: COLOR_SEMAFORO[colorCol[i]] });
         page.drawText(recortar(v, font, 8.5, cols[i].w - 14), { x: x + 10, y, size: 8.5, font });
       } else {
         page.drawText(recortar(v, font, 8.5, cols[i].w - 6), { x, y, size: 8.5, font });

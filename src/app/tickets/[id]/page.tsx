@@ -9,7 +9,7 @@ import {
   puedeEliminar,
   puedeVerTicket,
 } from "@/lib/permisos";
-import { semaforoSla, tiempoRestanteTexto } from "@/lib/sla";
+import { ETIQUETA_SLA, semaforoSla, tiempoRestanteTexto, type Semaforo } from "@/lib/sla";
 import {
   ETIQUETA_ESTADO,
   ETIQUETA_PRIORIDAD,
@@ -43,7 +43,21 @@ export default async function DetalleTicket({ params }: { params: Promise<{ id: 
       })
     : [];
   const ahora = new Date();
-  const semaforo = semaforoSla(ticket, ahora);
+  const sla = semaforoSla(ticket, ahora);
+  const filaSla = (tipo: "primerContacto" | "inicioAtencion", venceEn: Date, cumplidoEn: Date | null, valor: Semaforo) => (
+    <tr key={tipo}>
+      <td>{ETIQUETA_SLA[tipo]}</td>
+      <td><ChipSemaforo valor={valor} /></td>
+      <td>{formatearFecha(venceEn)}</td>
+      <td>
+        {cumplidoEn ? (
+          `Cumplido ${formatearFecha(cumplidoEn)}`
+        ) : (
+          <span className="muted">Pendiente · {tiempoRestanteTexto(venceEn, ahora)}</span>
+        )}
+      </td>
+    </tr>
+  );
 
   return (
     <>
@@ -52,7 +66,7 @@ export default async function DetalleTicket({ params }: { params: Promise<{ id: 
           <div className="folio muted">{ticket.folio}</div>
           <h1>{ticket.titulo}</h1>
         </div>
-        <ChipSemaforo valor={semaforo} />
+        <ChipSemaforo valor={sla.general} />
       </div>
 
       <div className="tarjeta">
@@ -63,13 +77,19 @@ export default async function DetalleTicket({ params }: { params: Promise<{ id: 
           <dt>Cliente</dt><dd>{ticket.cliente.nombre} ({ticket.cliente.email})</dd>
           <dt>Agente</dt><dd>{ticket.agente?.nombre ?? "Sin asignar"}</dd>
           <dt>Creado</dt><dd>{formatearFecha(ticket.creadoEn)}</dd>
-          <dt>Vence SLA</dt>
-          <dd>
-            {formatearFecha(ticket.slaVenceEn)}
-            {ticket.estado !== "CERRADO" && <span className="muted"> · {tiempoRestanteTexto(ticket.slaVenceEn, ahora)}</span>}
-          </dd>
+          <dt>Horario</dt><dd>{ticket.horarioHabil ? "Creado en horario hábil" : "Creado en horario inhábil"}</dd>
           {ticket.cerradoEn && (<><dt>Cerrado</dt><dd>{formatearFecha(ticket.cerradoEn)}</dd></>)}
         </dl>
+        <h2 style={{ marginTop: 20 }}>SLA</h2>
+        <div className="tabla-scroll">
+          <table>
+            <thead><tr><th>Indicador</th><th>Semáforo</th><th>Vence</th><th>Cumplimiento</th></tr></thead>
+            <tbody>
+              {filaSla("primerContacto", ticket.primerContactoVenceEn, ticket.primerContactoEn, sla.primerContacto)}
+              {filaSla("inicioAtencion", ticket.inicioAtencionVenceEn, ticket.inicioAtencionEn, sla.inicioAtencion)}
+            </tbody>
+          </table>
+        </div>
         <h2 style={{ marginTop: 20 }}>Descripción</h2>
         <p className="pre">{ticket.descripcion}</p>
       </div>

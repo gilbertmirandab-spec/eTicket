@@ -36,8 +36,12 @@ CREATE TABLE "Ticket" (
     "agenteId" TEXT,
     "creadoEn" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "actualizadoEn" TIMESTAMP(3) NOT NULL,
-    "slaVenceEn" TIMESTAMP(3) NOT NULL,
     "cerradoEn" TIMESTAMP(3),
+    "horarioHabil" BOOLEAN NOT NULL,
+    "primerContactoVenceEn" TIMESTAMP(3) NOT NULL,
+    "primerContactoEn" TIMESTAMP(3),
+    "inicioAtencionVenceEn" TIMESTAMP(3) NOT NULL,
+    "inicioAtencionEn" TIMESTAMP(3),
 
     CONSTRAINT "Ticket_pkey" PRIMARY KEY ("id")
 );
@@ -77,7 +81,10 @@ CREATE INDEX "Ticket_clienteId_idx" ON "Ticket"("clienteId");
 CREATE INDEX "Ticket_agenteId_idx" ON "Ticket"("agenteId");
 
 -- CreateIndex
-CREATE INDEX "Ticket_slaVenceEn_idx" ON "Ticket"("slaVenceEn");
+CREATE INDEX "Ticket_primerContactoVenceEn_idx" ON "Ticket"("primerContactoVenceEn");
+
+-- CreateIndex
+CREATE INDEX "Ticket_inicioAtencionVenceEn_idx" ON "Ticket"("inicioAtencionVenceEn");
 
 -- CreateIndex
 CREATE INDEX "Comentario_ticketId_idx" ON "Comentario"("ticketId");

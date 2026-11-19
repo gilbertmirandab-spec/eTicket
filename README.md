@@ -10,19 +10,18 @@ Sistema para la generación y administración de tickets de soporte y requerimie
   - **Administrador**: todo lo anterior y, de forma exclusiva, **eliminar tickets**, ver el **dashboard**, generar **informes PDF** y gestionar usuarios.
 - **Folio** único y correlativo por año: `TCK-2026-000001`.
 - **Estados**: Abierto, En progreso, Cerrado.
-- **SLA con semáforo** según prioridad:
+- **SLA** (igual para todas las prioridades), según si el ticket se crea en horario hábil (lunes a viernes de 09:00 a 18:00, hora de Santiago). El tiempo corre de forma continua, 24/7:
 
-  | Prioridad | Plazo |
-  |-----------|-------|
-  | Crítica   | 4 h   |
-  | Alta      | 8 h   |
-  | Media     | 24 h  |
-  | Baja      | 72 h  |
+  | Indicador           | Horario hábil | Horario inhábil | Se cumple cuando…                                              |
+  |---------------------|---------------|-----------------|----------------------------------------------------------------|
+  | Primer contacto     | 30 min        | 1 h             | un agente o administrador comenta, o el ticket pasa a En progreso |
+  | Inicio de atención  | 1 h           | 2 h             | el ticket pasa a En progreso (o se cierra)                      |
 
-  - 🔴 **Rojo**: SLA vencido (o ticket cerrado fuera de plazo).
-  - 🟡 **Amarillo**: queda 25 % o menos del plazo (configurable con `SLA_UMBRAL_AMARILLO_PCT`).
-  - 🟢 **Verde**: a tiempo (o cerrado dentro del plazo).
-- **Dashboard** (admin): totales por estado, semáforo SLA de tickets activos, por prioridad, % de cumplimiento y lista de tickets en riesgo, con filtro por fechas.
+  Semáforo de cada indicador y del ticket (el peor de los dos):
+  - 🔴 **Rojo**: SLA vencido (o cumplido fuera de plazo).
+  - 🟡 **Amarillo**: faltan 15 minutos o menos (configurable con `SLA_MINUTOS_AMARILLO`).
+  - 🟢 **Verde**: a tiempo (o cumplido dentro del plazo).
+- **Dashboard** (admin): totales por estado, semáforo SLA de tickets activos, rojo/amarillo/verde por indicador, % de cumplimiento de cada SLA y lista de tickets en riesgo, con filtro por fechas.
 - **Informe PDF** (admin): resumen y detalle de tickets del periodo filtrado.
 
 ## Tecnología

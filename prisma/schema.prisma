@@ -62,16 +62,24 @@ model Ticket {
 
   creadoEn      DateTime  @default(now())
   actualizadoEn DateTime  @updatedAt
-  /// Fecha límite del SLA, calculada al crear según la prioridad
-  slaVenceEn    DateTime
   cerradoEn     DateTime?
+
+  /// true si el ticket se creó en horario hábil (L-V 09:00-18:00, America/Santiago)
+  horarioHabil          Boolean
+  /// SLA de primer contacto: 30 min hábil / 1 h inhábil
+  primerContactoVenceEn DateTime
+  primerContactoEn      DateTime?
+  /// SLA de inicio de atención: 1 h hábil / 2 h inhábil
+  inicioAtencionVenceEn DateTime
+  inicioAtencionEn      DateTime?
 
   comentarios Comentario[]
 
   @@index([estado])
   @@index([clienteId])
   @@index([agenteId])
-  @@index([slaVenceEn])
+  @@index([primerContactoVenceEn])
+  @@index([inicioAtencionVenceEn])
 }
 
 model Comentario {
